@@ -1,11 +1,11 @@
 import os
 import spacy
-# spacy.cli.download("en_core_web_sm")
+spacy.cli.download("en_core_web_sm")
 
 # Load the English model for spaCy
 nlp = spacy.load("en_core_web_sm")
 
-directory_path = 'C:/Users/guillermo.pereira/Desktop/interviews_datapop'
+directory_path = 'C:/Users/evelin.lasarga/Desktop/interviews_datapop'
 
 def segment_text(text):
     # Use spaCy for basic sentence segmentation, may not be perfect

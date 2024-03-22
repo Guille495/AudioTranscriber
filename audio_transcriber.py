@@ -3,15 +3,24 @@ import csv
 from pydub import AudioSegment
 import speech_recognition as sr
 from tqdm import tqdm
+import urllib.error
 
 # Directory containing your .m4a files
-directory_path = 'C:/Users/guillermo.pereira/Desktop/interviews_datapop'
+directory_path = 'C:/Users/evelin.lasarga/Desktop/interviews_datapop'
+ffmpeg_path = "C:/Program Files/ffmpeg/bin/ffmpeg.exe"
+
+AudioSegment.converter = ffmpeg_path
 
 AUDIO_PORTIONS = 300
 
 # Initialize the recognizer
 r = sr.Recognizer()
 
+# Function to log errors to CSV
+def log_error_to_csv(error_log_path, row):
+    with open(error_log_path, "a", newline='', encoding='utf-8') as log_file:
+        csv_writer = csv.writer(log_file, delimiter='|')
+        csv_writer.writerow(row)
 
 # Function to split audio file into chunks
 def split_audio(audio, chunks=50):
@@ -71,9 +80,28 @@ for filename in filenames:
                     # Transcribe the audio
                     text = r.recognize_google(audio_data)
                     full_text.append(text)
+                except urllib.error.HTTPError as e:
+
+                    if e.code == 400:
+                        print("HTTP Error 400 encountered, trying alternative method...")
+                        try:
+                            # Attempt to transcribe using CMU Sphinx as a fallback
+                            text = r.recognize_sphinx(audio_data)
+                            full_text.append(text)
+                        except Exception as e2:
+                            log_error_to_csv(error_log_path, [filename, i + 1, start_timestamp, end_timestamp, portion_duration, "Fallback error: " + str(e2)])
+                            print(f"Error with fallback method for portion {i + 1} of {filename}: {e2}")
+
+                    else:
+
+                        log_error_to_csv(error_log_path,
+                                         [filename, i + 1, start_timestamp, end_timestamp, portion_duration,
+                                          "HTTP error: " + str(e)])
+                        print(f"Non-400 HTTP error processing portion {i + 1} of {filename}: {e}")
+
                 except Exception as e:
-                    # Log the error
-                    csv_writer.writerow([filename, i + 1, start_timestamp, end_timestamp, portion_duration, str(e)])
+                    # Log any other error
+                    log_error_to_csv(error_log_path, [filename, i + 1, start_timestamp, end_timestamp, portion_duration, str(e)])
                     print(f"Error processing portion {i + 1} of {filename}: {e}")
 
             # Clean up the temporary file
